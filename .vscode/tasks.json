@@ -1,0 +1,33 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "shell",
+      "label": "Make: Build",
+      "command": "make",
+      "args": ["all"],
+      "problemMatcher": ["$gcc"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "detail": "Builds all (make all)"
+    },
+    {
+      "type": "shell",
+      "label": "Make: Upload",
+      "command": "make",
+      "args": ["upload"],
+      "problemMatcher": ["$gcc"],
+      "detail": "Flash to HW using openOCD (make upload)"
+    },
+    {
+      "type": "shell",
+      "label": "Make: Clean",
+      "command": "make",
+      "args": ["clean"],
+      "problemMatcher": [],
+      "detail": "Clean compiled artifacts (make clean)"
+    }
+  ]
+}

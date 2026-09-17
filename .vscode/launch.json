@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug STM32F446RE (OpenOCD)",
+      "type": "cortex-debug",
+      "request": "launch",
+      "servertype": "openocd",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/main.elf",
+      "searchDir": [
+        "C:/msys64/ucrt64/share/openocd/scripts"
+      ],
+      "configFiles": [
+        "interface/stlink.cfg",
+        "target/stm32f4x.cfg"
+      ],
+      "svdFile": "C:/Users/marku/.platformio/platforms/ststm32/misc/svd/STM32F446.svd",
+      "preLaunchTask": "Build STM32 (Make)",
+      "runToEntryPoint": "main"
+    }
+  ]
+}
