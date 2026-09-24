@@ -9,7 +9,7 @@ SIZE    = $(PREFIX)size
 MCU = -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard
 
 # Kääntäjäliput C- ja C++ -koodille
-CFLAGS   = $(MCU) -DSTM32F446xx -O2 -Wall
+CFLAGS   = $(MCU) -DSTM32F446xx -O0 -g3 -Wall
 CXXFLAGS = $(CFLAGS) -std=c++20 -fno-rtti -fno-exceptions
 
 # Linkityksen asetukset
@@ -29,10 +29,12 @@ SRC_DIR   = src
 # Lähdekooditiedostot
 SRCS_C   = $(wildcard $(SRC_DIR)/*.c)
 SRCS_CXX = $(wildcard $(SRC_DIR)/*.cpp)
+SRCS_ASM = $(wildcard *.s)
 
 # MUUTOS 1: Ohjataan objektitiedostot build/ -hakemistoon patsubst-komennolla
 OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SRCS_C)) \
-       $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRCS_CXX))
+       $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRCS_CXX)) \
+	   $(patsubst %.s,$(BUILD_DIR)/%.o,$(SRCS_ASM))
 
 # Kohdetiedosto
 TARGET = $(BUILD_DIR)/main
@@ -58,6 +60,10 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
 # MUUTOS 4: Hakemiston luonti lennossa (Order-only dependency)
 $(BUILD_DIR):
 	@mkdir -p $@
+
+# Assembly-lähdekoodin käännös (startup-tiedosto projektin juuresta)
+$(BUILD_DIR)/%.o: %.s | $(BUILD_DIR)
+	$(CC) $(MCU) -c $< -o $@
 
 # OpenOCD konfiguraatio ST-Link v2-1 ja STM32F4-sarjalle
 OPENOCD          = C:/msys64/ucrt64/bin/openocd.exe

@@ -71,7 +71,7 @@ void init_i2c_driver(I2C_TypeDef *i2c, GPIO_TypeDef *scl_port, uint8_t scl_pin, 
     sda_port->PUPDR &= ~(3U << (sda_pin * 2));
     sda_port->PUPDR |=  (1U << (sda_pin * 2));
 
-    // AFR (indeksi ja shift lasketaan pinnin numerosta, ei enää yhteisestä muuttujasta)
+    // AFR (index and shift are calculated from pin number)
     uint8_t scl_afr_idx = scl_pin / 8;
     uint8_t sda_afr_idx = sda_pin / 8;
     uint8_t scl_shift = (scl_pin % 8) * 4;
@@ -82,7 +82,7 @@ void init_i2c_driver(I2C_TypeDef *i2c, GPIO_TypeDef *scl_port, uint8_t scl_pin, 
     sda_port->AFR[sda_afr_idx] &= ~(0xFU << sda_shift);
     sda_port->AFR[sda_afr_idx] |=  (4U  << sda_shift);
 
-    // I2C-rekisterit (näihin ei tule muutosta — ei riipu portista)
+    // I2C-registers (Common not depend of ports)
     i2c->CR1 |= I2C_CR1_SWRST;
     i2c->CR1 &= ~I2C_CR1_SWRST;
     i2c->TRISE = 17;

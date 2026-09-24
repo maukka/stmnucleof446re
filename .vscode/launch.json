@@ -16,7 +16,7 @@
         "target/stm32f4x.cfg"
       ],
       "svdFile": "C:/Users/marku/.platformio/platforms/ststm32/misc/svd/STM32F446.svd",
-      "preLaunchTask": "Build STM32 (Make)",
+      "preLaunchTask": "Make: Build",
       "runToEntryPoint": "main"
     }
   ]
