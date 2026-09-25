@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include "stm32f446xx.h"
+#include "../include/dma_driver.h"
 #include "../include/spi_driver.h"
 #include "../include/ili9341_driver.h"
 
@@ -14,7 +15,7 @@ void delay(uint32_t count) {
 int main(void) {
     systick_delay_init();
     init_spi();
-
+	init_dma_driver();
     // Taustavalo PA8 HIGH
     GPIOA->BSRR = (1U << 8);
 
@@ -57,11 +58,18 @@ int main(void) {
 	ili9341_write_command(0x29, NULL, 0);   // Display On
 	delay_ms(20);
 
-	ili9341_set_address_window(0, 0, 239, 319);   // koko ruutu
-	ili9341_write_color(0x0000, 240UL * 320UL);   // tyhjennä mustaksi
+	uint16_t test_colors[240];
+	for (int i = 0; i < 240; i++){
+		test_colors[i] = 0xF800;
+	}
 
-	ili9341_draw_string(105, 148, "Hello", 0xFFFF, 0x0000);   // valkoinen teksti, musta tausta
-	ili9341_draw_string(105, 160, "World", 0xFFFF, 0x0000);
+	uint8_t s_win = ili9341_set_address_window(0, 0, 127, 9);   // koko rivin leveys
+	uint8_t s_dma = ili9341_write_pixels_dma(test_colors, 127 * 10);
+	//ili9341_set_address_window(0, 0, 239, 319);   // koko ruutu
+	//ili9341_write_color(0x0000, 240UL * 320UL);   // tyhjennä mustaksi
+
+	//ili9341_draw_string(105, 148, "Hello", 0xFFFF, 0x0000);   // valkoinen teksti, musta tausta
+	//ili9341_draw_string(105, 160, "World", 0xFFFF, 0x0000);
 
     while (1) {
 

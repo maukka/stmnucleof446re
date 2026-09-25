@@ -17,5 +17,6 @@ void delay_ms(uint32_t ms);
 void delay_us(uint32_t us);
 uint8_t spi_tx_raw(const uint8_t* data, uint16_t size);
 uint8_t spi_rx_raw(uint8_t* data, uint16_t size);
+uint8_t spi_tx_dma(const uint8_t *data, uint16_t size);
 
 #endif

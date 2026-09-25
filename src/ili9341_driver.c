@@ -5,6 +5,8 @@
 
 #define FONT_WIDTH  5
 #define FONT_HEIGHT 7
+// Buffer size for DMA
+#define DMA_CHUNK_PIXELS 128
 
 /**
  * This function defines in which rectagular position we are wrtiting the data in GRAM that is
@@ -210,4 +212,86 @@ void ili9341_draw_string(uint16_t x, uint16_t y, const char *str, uint16_t fg_co
 		cursor_x += (FONT_WIDTH + 1);
 		str++;
 	}
+}
+
+/**
+ * Starts a Memory Write operation (0x2C) and streams an array of RGB565
+ * pixel colors to the display. Keeps CS low for the entire command+data
+ * transaction. The address window must be set beforehand with
+ * ili9341_set_address_window() so the display knows where this data lands.
+ *
+ * @param colors pointer to array of 16-bit RGB565 color values
+ * @param count number of pixels to write
+ */
+uint8_t ili9341_write_pixels_dma(const uint16_t *colors, uint32_t count){
+
+	if (colors == NULL && count > 0){
+		return -1;
+	}
+
+	uint8_t status = 0;
+	uint8_t cmd = 0x2C;
+	static uint8_t chunk_buf[DMA_CHUNK_PIXELS * 2];   // static: pois pinosta, säästää stack-tilaa
+
+	cs_low();
+
+	dc_command();
+	status |= spi_tx_raw(&cmd, 1);
+
+	dc_data();
+
+	uint32_t remaining = count;
+	uint32_t offset = 0;
+
+	while (remaining > 0 && status == 0){
+
+		uint32_t this_chunk = (remaining > DMA_CHUNK_PIXELS) ? DMA_CHUNK_PIXELS : remaining;
+
+		// CPU tekee byte-swapin tähän pieneen puskuriin
+		for (uint32_t i = 0; i < this_chunk; i++){
+			uint16_t c = colors[offset + i];
+			chunk_buf[i * 2]     = (uint8_t)((c >> 8) & 0xFF);
+			chunk_buf[i * 2 + 1] = (uint8_t)(c & 0xFF);
+		}
+
+		// DMA lähettää tämän palan
+		status |= spi_tx_dma(chunk_buf, (uint16_t)(this_chunk * 2));
+
+		offset += this_chunk;
+		remaining -= this_chunk;
+	}
+
+	cs_high();
+
+	return status;
+}
+
+uint8_t ili9341_write_color_dma(uint16_t color, uint32_t count){
+
+	uint8_t status = 0;
+	uint8_t cmd = 0x2C;
+	static uint8_t chunk_buf[DMA_CHUNK_PIXELS * 2];
+
+	// Täytä puskuri kerran -- väri ei muutu palojen välissä
+	uint8_t high = (uint8_t)((color >> 8) & 0xFF);
+	uint8_t low  = (uint8_t)(color & 0xFF);
+	for (uint32_t i = 0; i < DMA_CHUNK_PIXELS; i++){
+		chunk_buf[i * 2]     = high;
+		chunk_buf[i * 2 + 1] = low;
+	}
+
+	cs_low();
+	dc_command();
+	status |= spi_tx_raw(&cmd, 1);
+	dc_data();
+
+	uint32_t remaining = count;
+	while (remaining > 0 && status == 0){
+		uint32_t this_chunk = (remaining > DMA_CHUNK_PIXELS) ? DMA_CHUNK_PIXELS : remaining;
+		status |= spi_tx_dma(chunk_buf, (uint16_t)(this_chunk * 2));
+		remaining -= this_chunk;
+	}
+
+	cs_high();
+	return status;
 }

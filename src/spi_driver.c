@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include "../include/dma_driver.h"
 #include "../include/spi_driver.h"
 
 /**
@@ -50,26 +51,29 @@ static void init_gbio_clocks(void) {
  */
 static void init_spi_registers(){
 
-// 1. Kytketään SPI1-kello päälle APB2-väylässä
+	// Enable SPI1 clock in APB bus
     RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
     (void)RCC->APB2ENR; // Dummy read -> just for testing if this helps
 
     // 2. Shut down SPI
     SPI1->CR1 = 0;
 
-    // 3. Konfiguroidaan SPI1:
+    // Configuration of SPI1:
     // - Master Mode (MSTR = bit 2)
-    // - Software Slave Management (SSM = bit 9, SSI = bit 8) -> Pakollinen kun CS ohjataan käsin!
-    // - Kellotaajuuden jakaja (BR[2:0]): laitetaan varmuuden vuoksi hidas kello aluksi (esim. /32 tai /64)
+    // - Software Slave Management (SSM = bit 9, SSI = bit 8) -> mandatory we contro chip select manually!
+    // - Clock frequence divider (BR[2:0]): Slow clock at fisrt since jumper cables 
+	//  are really sensible of errors(divider example. /32 or /64)
     //   BR = 100b (bitit 5:3) -> APB2 / 32
-    // - CPOL = 0, CPHA = 0 (Mode 0 ILI9341:lle)
+    // - CPOL = 0, CPHA = 0 (Mode 0 for ILI9341)
     //SPI1->CR1 = SPI_CR1_MSTR | SPI_CR1_SSM | SPI_CR1_SSI | (0x4U << SPI_CR1_BR_Pos);
 	SPI1->CR1 = SPI_CR1_MSTR | SPI_CR1_SSM | SPI_CR1_SSI | (0x7U << SPI_CR1_BR_Pos);
 
-    // 4. CR2-rekisteri: Varmistetaan että 8-bit DFF / SSOE
+    // Enable 8-bit DFF / SSOE
     SPI1->CR2 = 0; // Standardi 8-bittinen tila STM32F4:ssä
 
-    // 5. Käynnistetään SPI1 (SPE = bit 6)
+	// Enable DMA transfer
+    SPI1->CR2 |= SPI_CR2_TXDMAEN;	
+    // Enable SPI1 (SPE = bit 6)
     SPI1->CR1 |= SPI_CR1_SPE;
 }
 
@@ -139,20 +143,20 @@ void ili9341_reset(){
     GPIOB->BSRR = (1U << 1);
     delay_ms(10);
     
-    // RESET LOW (Aktivoi laitteistonollauksen)
+    // RESET LOW
     GPIOB->BSRR = (1U << (1 + 16));
     delay_ms(50);
     
-    // RESET HIGH (Vapauta nollauksesta)
+    // RESET HIGH 
     GPIOB->BSRR = (1U << 1);
-    delay_ms(120); // Odotetaan että ohjainpiirin sisäiset jännitteet nousevat
+    delay_ms(120);
 }
 
 /**
  * Set chip select to low. Reserves the bus line to this pheriperal
  */
 void cs_low(void){
-	// Set CS to low. This way i say to display i am talking to you...
+
 	GPIOB->BSRR = (1U << (6 + 16));
 }
 
@@ -261,4 +265,14 @@ uint8_t spi_tx_raw(const uint8_t* data, uint16_t size){
 		}
 	}
 	return 0;
+}
+
+uint8_t spi_tx_dma(const uint8_t *data, uint16_t size){
+
+	uint8_t status = dma_spi_tx_start(data, size);
+	if (status != 0){
+		return status;
+	}
+
+	return dma_spi_tx_wait_complete();
 }
