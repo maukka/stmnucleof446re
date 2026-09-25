@@ -20,56 +20,16 @@ int main(void) {
     GPIOA->BSRR = (1U << 8);
 
     ili9341_reset();
-	uint8_t p;
+	ili9341_init_display();
 
-	p = 0x23; 
-	ili9341_write_command(0xC0, &p, 1);           // Power Control 1
-
-	p = 0x10; 
-	ili9341_write_command(0xC1, &p, 1);           // Power Control 2
-
-	uint8_t vcom[2] = {0x3E, 0x28}; 
-	ili9341_write_command(0xC5, vcom, 2);  // VCOM Control 1
-
-	p = 0x86; 
-	ili9341_write_command(0xC7, &p, 1);            // VCOM Control 2
-
-	p = 0x48; 
-	ili9341_write_command(0x36, &p, 1);            // MADCTL
-
-	p = 0x55; 
-	ili9341_write_command(0x3A, &p, 1);            // Pixel Format RGB565
-
-	uint8_t frmctr[2] = {0x00, 0x18}; 
-	ili9341_write_command(0xB1, frmctr, 2); // Frame Rate
-
-	uint8_t dfunc[3] = {0x08, 0x82, 0x27}; 
-	ili9341_write_command(0xB6, dfunc, 3); // Display Function Control
-
-	p = 0x11; 
-	ili9341_write_command(0xF2, &p, 1);            // 3Gamma disable
-
-	p = 0x01; 
-	ili9341_write_command(0x26, &p, 1);            // Gamma curve
-
-	ili9341_write_command(0x11, NULL, 0);   // Sleep Out
-	delay_ms(120);
-
-	ili9341_write_command(0x29, NULL, 0);   // Display On
-	delay_ms(20);
-
-	uint16_t test_colors[240];
-	for (int i = 0; i < 240; i++){
-		test_colors[i] = 0xF800;
-	}
-
-	uint8_t s_win = ili9341_set_address_window(0, 0, 127, 9);   // koko rivin leveys
-	uint8_t s_dma = ili9341_write_pixels_dma(test_colors, 127 * 10);
+	uint8_t s_win = ili9341_set_address_window(0, 0, 239, 319);   // koko rivin leveys
+	uint8_t s_dma = ili9341_write_color_dma(0xF800, 240UL * 320UL);
 	//ili9341_set_address_window(0, 0, 239, 319);   // koko ruutu
+	//ili9341_write_color_dma(0x0000, 240UL * 320UL); 
 	//ili9341_write_color(0x0000, 240UL * 320UL);   // tyhjennä mustaksi
 
-	//ili9341_draw_string(105, 148, "Hello", 0xFFFF, 0x0000);   // valkoinen teksti, musta tausta
-	//ili9341_draw_string(105, 160, "World", 0xFFFF, 0x0000);
+	ili9341_draw_string(105, 148, "Hello", 0xFFFF, 0x0000);   // valkoinen teksti, musta tausta
+	ili9341_draw_string(105, 160, "World", 0xFFFF, 0x0000);
 
     while (1) {
 

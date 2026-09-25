@@ -9,6 +9,48 @@
 #define DMA_CHUNK_PIXELS 128
 
 /**
+ * Writes the needed configuration for display.
+ */
+void ili9341_init_display(){
+	uint8_t p;
+
+	p = 0x23; 
+	ili9341_write_command(0xC0, &p, 1);           // Power Control 1
+
+	p = 0x10; 
+	ili9341_write_command(0xC1, &p, 1);           // Power Control 2
+
+	uint8_t vcom[2] = {0x3E, 0x28}; 
+	ili9341_write_command(0xC5, vcom, 2);  // VCOM Control 1
+
+	p = 0x86; 
+	ili9341_write_command(0xC7, &p, 1);            // VCOM Control 2
+
+	p = 0x48; 
+	ili9341_write_command(0x36, &p, 1);            // MADCTL
+
+	p = 0x55; 
+	ili9341_write_command(0x3A, &p, 1);            // Pixel Format RGB565
+
+	uint8_t frmctr[2] = {0x00, 0x18}; 
+	ili9341_write_command(0xB1, frmctr, 2); // Frame Rate
+
+	uint8_t dfunc[3] = {0x08, 0x82, 0x27}; 
+	ili9341_write_command(0xB6, dfunc, 3); // Display Function Control
+
+	p = 0x11; 
+	ili9341_write_command(0xF2, &p, 1);            // 3Gamma disable
+
+	p = 0x01; 
+	ili9341_write_command(0x26, &p, 1);            // Gamma curve
+
+	ili9341_write_command(0x11, NULL, 0);   // Sleep Out
+	delay_ms(120);
+
+	ili9341_write_command(0x29, NULL, 0);   // Display On
+	delay_ms(20);
+}
+/**
  * This function defines in which rectagular position we are wrtiting the data in GRAM that is
  * 240x320 pixel array in ili9341 dusplay. This is done by sending two commands:
  * 1. 0x2A which is column adderss (start x and end x)
