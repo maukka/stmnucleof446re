@@ -66,7 +66,9 @@ static void init_spi_registers(){
     //   BR = 100b (bitit 5:3) -> APB2 / 32
     // - CPOL = 0, CPHA = 0 (Mode 0 for ILI9341)
     //SPI1->CR1 = SPI_CR1_MSTR | SPI_CR1_SSM | SPI_CR1_SSI | (0x4U << SPI_CR1_BR_Pos);
-	SPI1->CR1 = SPI_CR1_MSTR | SPI_CR1_SSM | SPI_CR1_SSI | (0x7U << SPI_CR1_BR_Pos);
+	// This is slow speed for testing with jump wires
+	//SPI1->CR1 = SPI_CR1_MSTR | SPI_CR1_SSM | SPI_CR1_SSI | (0x7U << SPI_CR1_BR_Pos);
+	SPI1->CR1 = SPI_CR1_MSTR | SPI_CR1_SSM | SPI_CR1_SSI | (0x0U << SPI_CR1_BR_Pos);
 
     // Enable 8-bit DFF / SSOE
     SPI1->CR2 = 0; // Standardi 8-bittinen tila STM32F4:ssä

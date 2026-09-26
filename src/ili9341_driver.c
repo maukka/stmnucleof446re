@@ -6,7 +6,7 @@
 #define FONT_WIDTH  5
 #define FONT_HEIGHT 7
 // Buffer size for DMA
-#define DMA_CHUNK_PIXELS 128
+#define DMA_CHUNK_PIXELS 2048
 
 /**
  * Writes the needed configuration for display.
@@ -336,4 +336,360 @@ uint8_t ili9341_write_color_dma(uint16_t color, uint32_t count){
 
 	cs_high();
 	return status;
+}
+
+/**
+ * Sets display rotation.
+ * @param uint8_t can have next values:
+ * - 0 portrait
+ * - 1 landscape
+ * - 2 Inverted portrait
+ * - 3 Inverted landscape
+ */
+void ili9341_set_rotation(uint8_t rotation) {
+    uint8_t madctl = 0;
+
+    switch (rotation & 0x03) {
+        case 0: // Portrait
+            madctl = MADCTL_MX | MADCTL_BGR;
+            break;
+        case 1: // Landscape
+            madctl = MADCTL_MV | MADCTL_BGR;
+            break;
+        case 2: // Inverted Portrait
+            madctl = MADCTL_MY | MADCTL_BGR;
+            break;
+        case 3: // Inverted Landscape
+            madctl = MADCTL_MX | MADCTL_MY | MADCTL_MV | MADCTL_BGR;
+            break;
+    }
+
+    ili9341_write_command(0x36, &madctl, 1);
+}
+
+/**
+ * Helper function to draw one pixel at the time with given color on the display.
+ * @param uint16_t x coordinate
+ * @param uint16_t y coordinate
+ * @param uint16_t color
+ */
+uint8_t ili9341_draw_pixel(uint16_t x, uint16_t y, uint16_t color){
+
+	uint8_t status = 0;
+
+	status |= ili9341_set_address_window(x, y, x, y);
+	status |= ili9341_write_color(color, 1);
+
+	return status;
+}
+
+/**
+ * Draws a horizontal line, optimized as a single filled rectangle
+ * of height 1 instead of looping pixel by pixel.
+ */
+uint8_t ili9341_draw_hline(uint16_t x, uint16_t y, uint16_t w, uint16_t color){
+
+	uint8_t status = 0;
+
+	status |= ili9341_set_address_window(x, y, x + w - 1, y);
+	status |= ili9341_write_color_dma(color, w);
+
+	return status;
+}
+
+/**
+ * Draws a vertical line, optimized as a single filled rectangle
+ * of width 1 instead of looping pixel by pixel.
+ */
+uint8_t ili9341_draw_vline(uint16_t x, uint16_t y, uint16_t h, uint16_t color){
+
+	uint8_t status = 0;
+
+	status |= ili9341_set_address_window(x, y, x, y + h - 1);
+	status |= ili9341_write_color_dma(color, h);
+
+	return status;
+}
+
+/**
+ * Draws a rectangle outline (border only, no fill) using four line calls.
+ */
+uint8_t ili9341_draw_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color){
+
+	uint8_t status = 0;
+
+	status |= ili9341_draw_hline(x, y, w, color);                  // top
+	status |= ili9341_draw_hline(x, y + h - 1, w, color);          // bottom
+	status |= ili9341_draw_vline(x, y, h, color);                  // left
+	status |= ili9341_draw_vline(x + w - 1, y, h, color);          // right
+
+	return status;
+}
+
+/**
+ * Draws an arbitrary diagonal line using Bresenham's line algorithm.
+ * Falls back to the optimized hline/vline for perfectly horizontal
+ * or vertical lines, since those are far faster than pixel-by-pixel.
+ */
+uint8_t ili9341_draw_line(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t color){
+
+	uint8_t status = 0;
+
+	// Fast paths for perfectly horizontal/vertical lines
+	if (y0 == y1){
+		uint16_t x_start = (x0 < x1) ? x0 : x1;
+		uint16_t w = (x0 < x1) ? (x1 - x0 + 1) : (x0 - x1 + 1);
+		return ili9341_draw_hline(x_start, y0, w, color);
+	}
+	if (x0 == x1){
+		uint16_t y_start = (y0 < y1) ? y0 : y1;
+		uint16_t h = (y0 < y1) ? (y1 - y0 + 1) : (y0 - y1 + 1);
+		return ili9341_draw_vline(x0, y_start, h, color);
+	}
+
+	// Bresenham's algorithm for diagonal lines
+	int16_t dx = (int16_t)((x1 > x0) ? (x1 - x0) : (x0 - x1));
+	int16_t dy = (int16_t)((y1 > y0) ? (y1 - y0) : (y0 - y1));
+	int16_t sx = (x0 < x1) ? 1 : -1;
+	int16_t sy = (y0 < y1) ? 1 : -1;
+	int16_t err = dx - dy;
+
+	int16_t cx = (int16_t)x0;
+	int16_t cy = (int16_t)y0;
+
+	while (1){
+		status |= ili9341_draw_pixel((uint16_t)cx, (uint16_t)cy, color);
+
+		if (cx == (int16_t)x1 && cy == (int16_t)y1){
+			break;
+		}
+
+		int16_t e2 = 2 * err;
+		if (e2 > -dy){
+			err -= dy;
+			cx += sx;
+		}
+		if (e2 < dx){
+			err += dx;
+			cy += sy;
+		}
+	}
+
+	return status;
+}
+
+/**
+ * Fills a rectangular area with a solid color. Uses DMA since this can
+ * cover a large number of pixels (e.g. the whole screen).
+ */
+uint8_t ili9341_fill_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color){
+
+	uint8_t status = 0;
+
+	status |= ili9341_set_address_window(x, y, x + w - 1, y + h - 1);
+	status |= ili9341_write_color_dma(color, (uint32_t)w * (uint32_t)h);
+
+	return status;
+}
+
+/**
+ * Fills the entire 240x320 screen with a solid color.
+ * Thin wrapper around fill_rect for convenience.
+ */
+uint8_t ili9341_fill_screen(uint16_t color){
+
+	return ili9341_fill_rect(0, 0, 240, 320, color);
+}
+
+/**
+ * Draws a circle outline using the midpoint (Bresenham) circle algorithm.
+ * Plots 8 symmetric points per step instead of computing each one directly,
+ * which is what makes the algorithm efficient.
+ */
+uint8_t ili9341_draw_circle(uint16_t x0, uint16_t y0, uint16_t r, uint16_t color){
+
+	uint8_t status = 0;
+
+	int16_t x = (int16_t)r;
+	int16_t y = 0;
+	int16_t err = 0;
+
+	while (x >= y){
+		status |= ili9341_draw_pixel(x0 + x, y0 + y, color);
+		status |= ili9341_draw_pixel(x0 + y, y0 + x, color);
+		status |= ili9341_draw_pixel(x0 - y, y0 + x, color);
+		status |= ili9341_draw_pixel(x0 - x, y0 + y, color);
+		status |= ili9341_draw_pixel(x0 - x, y0 - y, color);
+		status |= ili9341_draw_pixel(x0 - y, y0 - x, color);
+		status |= ili9341_draw_pixel(x0 + y, y0 - x, color);
+		status |= ili9341_draw_pixel(x0 + x, y0 - y, color);
+
+		if (err <= 0){
+			y += 1;
+			err += 2 * y + 1;
+		}
+		if (err > 0){
+			x -= 1;
+			err -= 2 * x + 1;
+		}
+	}
+
+	return status;
+}
+
+/**
+ * Draws a filled circle. Instead of plotting individual pixels for the
+ * interior, draws horizontal lines (chords) between symmetric edge points
+ * on each step -- same idea as draw_hline being faster than pixel-by-pixel,
+ * since each chord is one set_address_window + write_color_dma call.
+ */
+uint8_t ili9341_fill_circle(uint16_t x0, uint16_t y0, uint16_t r, uint16_t color){
+
+	uint8_t status = 0;
+
+	int16_t x = (int16_t)r;
+	int16_t y = 0;
+	int16_t err = 0;
+
+	while (x >= y){
+		// Horizontal chord at y0+y, spanning from x0-x to x0+x
+		status |= ili9341_draw_hline((uint16_t)(x0 - x), (uint16_t)(y0 + y), (uint16_t)(2 * x + 1), color);
+		// Horizontal chord at y0-y (mirrored, skip if y==0 to avoid drawing it twice)
+		if (y != 0){
+			status |= ili9341_draw_hline((uint16_t)(x0 - x), (uint16_t)(y0 - y), (uint16_t)(2 * x + 1), color);
+		}
+		// Horizontal chord at y0+x, spanning from x0-y to x0+y
+		status |= ili9341_draw_hline((uint16_t)(x0 - y), (uint16_t)(y0 + x), (uint16_t)(2 * y + 1), color);
+		// Horizontal chord at y0-x (mirrored, skip if x==0)
+		if (x != 0){
+			status |= ili9341_draw_hline((uint16_t)(x0 - y), (uint16_t)(y0 - x), (uint16_t)(2 * y + 1), color);
+		}
+
+		if (err <= 0){
+			y += 1;
+			err += 2 * y + 1;
+		}
+		if (err > 0){
+			x -= 1;
+			err -= 2 * x + 1;
+		}
+	}
+
+	return status;
+}
+
+/**
+ * Draws a rectangle outline with rounded corners. Uses the straight-edge
+ * lines for the sides and quarter-circle arcs (via draw_circle_helper)
+ * for the four corners.
+ */
+static uint8_t ili9341_draw_circle_helper(uint16_t x0, uint16_t y0, uint16_t r, uint8_t corner_mask, uint16_t color){
+
+	uint8_t status = 0;
+
+	int16_t x = (int16_t)r;
+	int16_t y = 0;
+	int16_t err = 0;
+
+	while (x >= y){
+		if (corner_mask & 0x1){   // top-right
+			status |= ili9341_draw_pixel(x0 + x, y0 - y, color);
+			status |= ili9341_draw_pixel(x0 + y, y0 - x, color);
+		}
+		if (corner_mask & 0x2){   // top-left
+			status |= ili9341_draw_pixel(x0 - x, y0 - y, color);
+			status |= ili9341_draw_pixel(x0 - y, y0 - x, color);
+		}
+		if (corner_mask & 0x4){   // bottom-left
+			status |= ili9341_draw_pixel(x0 - x, y0 + y, color);
+			status |= ili9341_draw_pixel(x0 - y, y0 + x, color);
+		}
+		if (corner_mask & 0x8){   // bottom-right
+			status |= ili9341_draw_pixel(x0 + x, y0 + y, color);
+			status |= ili9341_draw_pixel(x0 + y, y0 + x, color);
+		}
+
+		if (err <= 0){
+			y += 1;
+			err += 2 * y + 1;
+		}
+		if (err > 0){
+			x -= 1;
+			err -= 2 * x + 1;
+		}
+	}
+
+	return status;
+}
+
+uint8_t ili9341_draw_round_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t r, uint16_t color){
+
+	uint8_t status = 0;
+
+	// Straight edges, shortened by the corner radius on each end
+	status |= ili9341_draw_hline(x + r, y, w - 2 * r, color);                   // top
+	status |= ili9341_draw_hline(x + r, y + h - 1, w - 2 * r, color);           // bottom
+	status |= ili9341_draw_vline(x, y + r, h - 2 * r, color);                   // left
+	status |= ili9341_draw_vline(x + w - 1, y + r, h - 2 * r, color);           // right
+
+	// Four corner arcs
+	status |= ili9341_draw_circle_helper(x + r,         y + r,         r, 0x2, color);  // top-left
+	status |= ili9341_draw_circle_helper(x + w - 1 - r,  y + r,         r, 0x1, color);  // top-right
+	status |= ili9341_draw_circle_helper(x + r,         y + h - 1 - r, r, 0x4, color);  // bottom-left
+	status |= ili9341_draw_circle_helper(x + w - 1 - r,  y + h - 1 - r, r, 0x8, color);  // bottom-right
+
+	return status;
+}
+
+/**
+ * Filled rounded rectangle: a solid fill_rect for the middle section plus
+ * two solid corner-fill helpers for the left/right rounded edges.
+ */
+static uint8_t ili9341_fill_circle_helper(uint16_t x0, uint16_t y0, uint16_t r, uint8_t corner_mask, int16_t delta, uint16_t color){
+
+	uint8_t status = 0;
+
+	int16_t x = (int16_t)r;
+	int16_t y = 0;
+	int16_t err = 0;
+
+	while (x >= y){
+		if (corner_mask & 0x1){   // right half
+			status |= ili9341_draw_vline((uint16_t)(x0 + x), (uint16_t)(y0 - y), (uint16_t)(2 * y + 1 + delta), color);
+			status |= ili9341_draw_vline((uint16_t)(x0 + y), (uint16_t)(y0 - x), (uint16_t)(2 * x + 1 + delta), color);
+		}
+		if (corner_mask & 0x2){   // left half
+			status |= ili9341_draw_vline((uint16_t)(x0 - x), (uint16_t)(y0 - y), (uint16_t)(2 * y + 1 + delta), color);
+			status |= ili9341_draw_vline((uint16_t)(x0 - y), (uint16_t)(y0 - x), (uint16_t)(2 * x + 1 + delta), color);
+		}
+
+		if (err <= 0){
+			y += 1;
+			err += 2 * y + 1;
+		}
+		if (err > 0){
+			x -= 1;
+			err -= 2 * x + 1;
+		}
+	}
+
+	return status;
+}
+
+uint8_t ili9341_fill_round_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t r, uint16_t color){
+
+	uint8_t status = 0;
+
+	// Center block, full width, height minus the two rounded caps
+	status |= ili9341_fill_rect(x + r, y, w - 2 * r, h, color);
+
+	// Left and right rounded caps
+	status |= ili9341_fill_circle_helper((uint16_t)(x + w - 1 - r), (uint16_t)(y + r), r, 0x1, (int16_t)(h - 2 * r - 1), color);
+	status |= ili9341_fill_circle_helper((uint16_t)(x + r),         (uint16_t)(y + r), r, 0x2, (int16_t)(h - 2 * r - 1), color);
+
+	return status;
+}
+
+uint16_t color565(uint8_t r, uint8_t g, uint8_t b) {
+    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
 }
