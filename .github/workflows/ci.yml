@@ -48,6 +48,7 @@ jobs:
             --error-exitcode=1 \
             --suppress=missingIncludeSystem \
             --suppress=missingInclude \
+            -DSTM32F446xx \
             -I include \
             -I "$HOME/.platformio/packages/framework-stm32cubef4/Drivers/CMSIS/Device/ST/STM32F4xx/Include" \
             -I "$HOME/.platformio/packages/framework-stm32cubef4/Drivers/CMSIS/Include" \
