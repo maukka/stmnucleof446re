@@ -37,6 +37,9 @@ OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SRCS_C)) \
        $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRCS_CXX)) \
 	   $(patsubst %.s,$(BUILD_DIR)/%.o,$(SRCS_ASM))
 
+# Avoid requiring a C++ runtime when linking a C-only firmware image.
+LINKER = $(if $(strip $(SRCS_CXX)),$(CXX),$(CC))
+
 # Kohdetiedosto
 TARGET = $(BUILD_DIR)/main
 HOST_CC ?= gcc
@@ -52,7 +55,7 @@ $(HOST_TEST_BIN): tests/button_logic_test.c src/button_logic.c include/button_lo
 
 # Linkitys
 $(TARGET).elf: $(OBJS) | $(BUILD_DIR)
-	$(CXX) $(OBJS) $(LDFLAGS) -o $@
+	$(LINKER) $(OBJS) $(LDFLAGS) -o $@
 	$(SIZE) $@
 
 $(TARGET).bin: $(TARGET).elf
