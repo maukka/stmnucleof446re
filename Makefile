@@ -14,7 +14,7 @@ CFLAGS   = $(MCU) -DSTM32F446xx -O0 -g3 -Wall
 CXXFLAGS = $(CFLAGS) -std=c++20 -fno-rtti -fno-exceptions
 
 # Linkityksen asetukset
-LDSCRIPT = STM32F446RETx_FLASH.ld
+LDSCRIPT = STM32F446RETX_FLASH.ld
 LDFLAGS  = $(MCU) -T$(LDSCRIPT) --specs=nosys.specs -Wl,--gc-sections
 
 # Sisällytettävät kansiot (Include paths)
