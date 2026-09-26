@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 void button_init(void);
-// debounced, edge-triggered "single press" -recognition
+// Edge-triggered sampled press detection; does not debounce.
 bool button_was_pressed(void);
 
 void button_update(uint32_t elapsed_ms);

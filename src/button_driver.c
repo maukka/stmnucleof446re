@@ -1,15 +1,12 @@
 #include "../include/button_driver.h"
+#include "../include/button_logic.h"
 
-#define LONG_PRESS_MS 500U
-
-static bool was_down = false;
-static uint32_t held_ms = 0;
-static bool short_press_flag = false;
-static bool long_press_flag = false;
+static button_logic_t button_logic;
 
 void button_init(void){
 
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN;
+	button_logic_init(&button_logic);
 
 	// PC13 input mode (00)
 	GPIOC->MODER &= ~(3U << (13 * 2));
@@ -26,61 +23,22 @@ static bool button_is_pressed(void){
 }
 
 /**
- * Debounced, edge-triggered single-press detection. Call this repeatedly
- * from the main loop (e.g. every iteration). Returns true exactly once
- * per physical press, even if the mechanical contact bounces.
+ * Edge-triggered press detection. Call this repeatedly from the main loop.
+ * This reports one event per sampled press edge; it does not debounce.
  */
 bool button_was_pressed(void){
 
-	was_down = false;
-	bool now_down = button_is_pressed();
-
-	// Very simple time-based debounce: only trust a state change
-	// after it has held steady for a short window.
-	// (Uses your existing millisecond timebase via a counter you
-	// increment somewhere, e.g. in SysTick, OR poll-based approach below.)
-
-	if (now_down != was_down){
-		was_down = now_down;
-		if (now_down){
-			return true;   // rising edge of "pressed"
-		}
-	}
-
-	return false;
+	return button_logic_was_pressed(&button_logic, button_is_pressed());
 }
 
 void button_update(uint32_t elapsed_ms){
-
-	bool now_down = button_is_pressed();
-
-	if (now_down){
-		held_ms += elapsed_ms;
-		was_down = true;
-	} else if (was_down){
-		// Just released -- classify the press that just ended
-		if (held_ms >= LONG_PRESS_MS){
-			long_press_flag = true;
-		} else {
-			short_press_flag = true;
-		}
-		held_ms = 0;
-		was_down = false;
-	}
+	button_logic_update(&button_logic, button_is_pressed(), elapsed_ms);
 }
 
 bool button_get_short_press(void){
-	if (short_press_flag){
-		short_press_flag = false;
-		return true;
-	}
-	return false;
+	return button_logic_take_short_press(&button_logic);
 }
 
 bool button_get_long_press(void){
-	if (long_press_flag){
-		long_press_flag = false;
-		return true;
-	}
-	return false;
+	return button_logic_take_long_press(&button_logic);
 }

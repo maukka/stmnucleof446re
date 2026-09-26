@@ -1,0 +1,61 @@
+name: Firmware CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build, static analysis, and Robot tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install build and analysis tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            cppcheck \
+            gcc-arm-none-eabi \
+            libnewlib-arm-none-eabi \
+            make
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install Robot Framework and PlatformIO
+        run: python -m pip install --disable-pip-version-check robotframework platformio
+
+      - name: Install STM32 CMSIS headers
+        run: pio pkg install -g -t framework-stm32cubef4
+
+      - name: Build firmware
+        run: |
+          make all \
+            PREFIX=arm-none-eabi- \
+            PLATFORMIO_PACKAGES_DIR="$HOME/.platformio/packages"
+
+      - name: Run Cppcheck on project C sources
+        run: |
+          cppcheck \
+            --enable=warning \
+            --error-exitcode=1 \
+            --suppress=missingIncludeSystem \
+            --suppress=missingInclude \
+            --suppress=comparePointers:*/cmsis_gcc.h \
+            -DSTM32F446xx \
+            -D__GNUC__=13 \
+            -I include \
+            -I "$HOME/.platformio/packages/framework-stm32cubef4/Drivers/CMSIS/Device/ST/STM32F4xx/Include" \
+            -I "$HOME/.platformio/packages/framework-stm32cubef4/Drivers/CMSIS/Include" \
+            src/*.c \
+            tests/*.c
+
+      - name: Run Robot Framework tests
+        run: robot --outputdir build/robot-results tests/button_logic.robot
