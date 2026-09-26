@@ -48,6 +48,7 @@ jobs:
             --error-exitcode=1 \
             --suppress=missingIncludeSystem \
             --suppress=missingInclude \
+            --suppress=comparePointers:*/cmsis_gcc.h \
             -DSTM32F446xx \
             -D__GNUC__=13 \
             -I include \
