@@ -38,8 +38,16 @@ OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SRCS_C)) \
 
 # Kohdetiedosto
 TARGET = $(BUILD_DIR)/main
+HOST_CC ?= gcc
+HOST_TEST_BIN = $(BUILD_DIR)/button_logic_test.exe
 
 all: $(TARGET).elf $(TARGET).bin
+
+host-test: $(HOST_TEST_BIN)
+	$(HOST_TEST_BIN)
+
+$(HOST_TEST_BIN): tests/button_logic_test.c src/button_logic.c include/button_logic.h | $(BUILD_DIR)
+	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -Iinclude tests/button_logic_test.c src/button_logic.c -o $@
 
 # Linkitys
 $(TARGET).elf: $(OBJS) | $(BUILD_DIR)
@@ -78,4 +86,4 @@ upload: $(TARGET).elf
 clean:
 	rm -rf $(BUILD_DIR)
 
-.PHONY: all clean upload
+.PHONY: all clean upload host-test

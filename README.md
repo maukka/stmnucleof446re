@@ -178,6 +178,30 @@ int main(void)
 
 ## Testing
 
+### Board-free button logic tests
+
+The button timing and event handling is separated from the GPIO read so it
+can be tested on a PC without a connected Nucleo board. The native C tests
+exercise the same logic used by the firmware driver.
+
+Requirements: GNU Make, a host C compiler (`gcc` by default), and Robot
+Framework if you want the Robot suite. Run all C tests directly with:
+
+```bash
+make host-test
+```
+
+Run the same scenarios as individual Robot tests with:
+
+```bash
+robot tests/button_logic.robot
+```
+
+The Robot suite builds the native test executable and runs cases for short
+presses, long presses, the 500 ms boundary, idle/held states, and one-shot
+event consumption. These tests validate firmware logic only; they do not
+verify GPIO registers or electrical behavior on the real board.
+
 Recommended testing order to validate the driver:
 
 1. Check the computed register values (`MODER`, `AFR`, `CCR`, `TRISE`) with
