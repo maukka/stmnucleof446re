@@ -1,5 +1,6 @@
-# Kääntäjän ja työkalujen polut
-PREFIX = C:/Users/marku/.platformio/packages/toolchain-gccarmnoneeabi/bin/arm-none-eabi-
+# Toolchain and CMSIS paths can be overridden for local installations and CI.
+PLATFORMIO_PACKAGES_DIR ?= C:/Users/marku/.platformio/packages
+PREFIX ?= $(PLATFORMIO_PACKAGES_DIR)/toolchain-gccarmnoneeabi/bin/arm-none-eabi-
 CC      = $(PREFIX)gcc
 CXX     = $(PREFIX)g++
 OBJCOPY = $(PREFIX)objcopy
@@ -19,8 +20,8 @@ LDFLAGS  = $(MCU) -T$(LDSCRIPT) --specs=nosys.specs -Wl,--gc-sections
 # Sisällytettävät kansiot (Include paths)
 INCLUDES = \
   -Isrc \
-  -IC:/Users/marku/.platformio/packages/framework-stm32cubef4/Drivers/CMSIS/Device/ST/STM32F4xx/Include \
-  -IC:/Users/marku/.platformio/packages/framework-stm32cubef4/Drivers/CMSIS/Include
+  -I$(PLATFORMIO_PACKAGES_DIR)/framework-stm32cubef4/Drivers/CMSIS/Device/ST/STM32F4xx/Include \
+  -I$(PLATFORMIO_PACKAGES_DIR)/framework-stm32cubef4/Drivers/CMSIS/Include
 
 # Hakemistot
 BUILD_DIR = build
@@ -74,8 +75,8 @@ $(BUILD_DIR)/%.o: %.s | $(BUILD_DIR)
 	$(CC) $(MCU) -c $< -o $@
 
 # OpenOCD konfiguraatio ST-Link v2-1 ja STM32F4-sarjalle
-OPENOCD          = C:/msys64/ucrt64/bin/openocd.exe
-OPENOCD_SCRIPTS  = C:/msys64/ucrt64/share/openocd/scripts
+OPENOCD          ?= openocd
+OPENOCD_SCRIPTS  ?= /usr/share/openocd/scripts
 
 upload: $(TARGET).elf
 	$(OPENOCD) -s $(OPENOCD_SCRIPTS) \

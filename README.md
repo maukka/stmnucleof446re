@@ -178,6 +178,19 @@ int main(void)
 
 ## Testing
 
+### GitHub Actions
+
+The `Firmware CI` workflow runs on every push and pull request. It builds the
+firmware, runs Cppcheck on every C source in `src/` and `tests/`, and executes
+the Robot Framework test suite. A failed check is reported on the commit or
+pull request.
+
+GitHub Actions cannot prevent someone from pushing directly to an unprotected
+branch. To require CI before changes reach your main branch, configure a
+branch protection rule or repository ruleset for that branch, enable
+**Require status checks to pass before merging**, and select the
+**Build, static analysis, and Robot tests** check.
+
 ### Board-free button logic tests
 
 The button timing and event handling is separated from the GPIO read so it
